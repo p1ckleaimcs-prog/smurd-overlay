@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <title>FiveM Player Counter Overlay</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght=600;800&display=swap');
+
+        body { margin: 0; padding: 0; background: transparent; font-family: 'Poppins', sans-serif; overflow: hidden; }
+        .overlay-container {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(15, 15, 15, 0.85);
+            border: 2px solid #FFD700;
+            border-radius: 8px;
+            padding: 10px 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            color: #ffffff;
+            font-size: 24px;
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            background-color: #00ffcc;
+            border-radius: 50%;
+            margin-right: 15px;
+            box-shadow: 0 0 10px #00ffcc;
+            animation: pulse 2s infinite;
+        }
+        .label { text-transform: uppercase; font-size: 14px; letter-spacing: 1px; color: #aaaaaa; margin-right: 8px; }
+        .player-count { color: #FFD700; font-weight: 800; }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 204, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="overlay-container">
+        <div class="status-dot" id="dot"></div>
+        <span class="label">Jucători Online:</span>
+        <span class="player-count" id="count">--</span>
+    </div>
+
+    <script>
+        async function readLiveCount() {
+            try {
+                // Cere datele direct din aplicația Flask din Render
+                const response = await fetch('/players');
+                if (!response.ok) throw new Error();
+                
+                const data = await response.json();
+                document.getElementById('count').innerText = data.players;
+                document.getElementById('dot').style.backgroundColor = '#00ffcc';
+                document.getElementById('dot').style.boxShadow = '0 0 10px #00ffcc';
+            } catch (error) {
+                document.getElementById('count').innerText = '--';
+                document.getElementById('dot').style.backgroundColor = '#ff4444';
+                document.getElementById('dot').style.boxShadow = '0 0 10px #ff4444';
+            }
+        }
+
+        // Interogare o dată la 2 secunde (să nu supraîncarci serverul)
+        readLiveCount();
+        setInterval(readLiveCount, 2000);
+    </script>
+</body>
+</html>
