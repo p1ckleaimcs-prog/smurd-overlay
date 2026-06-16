@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 from flask import Flask, jsonify
 
@@ -8,7 +9,12 @@ BASE_IP = '81.181.113.133'
 PORTS_TO_TRY = ['30120', '30110', '30130', '30100']
 WORKING_PORT = '30120'
 
-# Găsim portul corect o singură dată, la pornirea serverului pe Render
+# Variabile pentru Cache
+last_fetch_time = 0
+cached_players = "--"
+CACHE_COOLDOWN = 5  # Cere date de la FiveM doar din 5 in 5 secunde
+
+# Găsim portul la pornire
 for port in PORTS_TO_TRY:
     test_url = f'http://{BASE_IP}:{port}/players.json'
     try:
@@ -24,7 +30,6 @@ URL = f'http://{BASE_IP}:{WORKING_PORT}/players.json'
 
 @app.route('/')
 def index():
-    # Trimite fișierul HTML către browser/OBS
     try:
         with open("overlay.html", "r", encoding="utf-8") as f:
             return f.read()
@@ -33,17 +38,25 @@ def index():
 
 @app.route('/players')
 def get_players():
-    # Returnează numărul de jucători sub formă de JSON în timp real
-    try:
-        response = requests.get(URL, timeout=1.5)
-        if response.status_code == 200:
-            data = response.json()
-            return jsonify({"players": str(len(data))})
-    except Exception:
-        pass
-    return jsonify({"players": "--"})
+    global last_fetch_time, cached_players
+    current_time = time.time()
+    
+    # Verificăm dacă au trecut 5 secunde de la ultima interogare către FiveM
+    if current_time - last_fetch_time > CACHE_COOLDOWN:
+        try:
+            # Marim puțin timeout-ul ca să dăm timp serverului FiveM să răspundă
+            response = requests.get(URL, timeout=2.5)
+            if response.status_code == 200:
+                data = response.json()
+                cached_players = str(len(data))
+                last_fetch_time = current_time # Resetăm cronometrul
+        except Exception:
+            # Dacă pică un request, pur și simplu păstrăm ultima valoare bună (nu dăm eroare)
+            pass 
+            
+    # Returnăm instant ce avem în memorie
+    return jsonify({"players": cached_players})
 
 if __name__ == '__main__':
-    # Render folosește o variabilă de mediu numită PORT
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
